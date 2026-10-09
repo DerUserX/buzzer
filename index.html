@@ -8,17 +8,19 @@
 </head>
 <body>
   <main id="arena">
-    <section class="side" id="side-a" data-player="a">
+    <section class="side" id="side-a">
       <div class="side-inner">
         <div class="name" id="name-a">Daniel</div>
         <div class="key-hint">Taste <kbd id="key-a">A</kbd></div>
       </div>
+      <div class="score" id="score-a"></div>
     </section>
-    <section class="side" id="side-b" data-player="b">
+    <section class="side" id="side-b">
       <div class="side-inner">
         <div class="name" id="name-b">Dennis</div>
         <div class="key-hint">Taste <kbd id="key-b">#</kbd></div>
       </div>
+      <div class="score" id="score-b"></div>
     </section>
   </main>
 
@@ -26,12 +28,22 @@
     <div class="overlay-content">
       <div class="overlay-name" id="overlay-name"></div>
       <div class="dots" id="dots"></div>
-      <div class="overlay-hint">Leertaste = sofort zurücksetzen</div>
+    </div>
+  </div>
+
+  <div id="verdict" aria-live="polite"></div>
+
+  <div id="win" aria-live="assertive">
+    <div class="overlay-content">
+      <div class="win-trophy">🏆</div>
+      <div class="overlay-name" id="win-name"></div>
+      <div class="win-sub">gewinnt!</div>
+      <div class="win-hint"><kbd>Enter</kbd> neues Spiel</div>
     </div>
   </div>
 
   <button id="settings-btn" title="Einstellungen (Esc)" aria-label="Einstellungen">⚙</button>
-  <div id="start-hint">Klick oder Taste drücken, um Sound zu aktivieren · Esc = Einstellungen</div>
+  <div id="start-hint">Taste drücken, um Sound zu aktivieren · Esc = Einstellungen</div>
 
   <dialog id="settings">
     <form method="dialog" id="settings-form">
@@ -44,22 +56,32 @@
         <fieldset class="player">
           <legend>Spieler A (links)</legend>
           <label>Name <input type="text" id="s-name-a" maxlength="30"></label>
+          <div class="chips" data-player="a"></div>
           <label>Farbe <input type="color" id="s-color-a"></label>
-          <label>Taste <button type="button" class="keybind" id="s-key-a" data-player="a"></button></label>
+          <label>Taste <button type="button" class="keybind" id="s-key-a"></button></label>
         </fieldset>
         <fieldset class="player">
           <legend>Spieler B (rechts)</legend>
           <label>Name <input type="text" id="s-name-b" maxlength="30"></label>
+          <div class="chips" data-player="b"></div>
           <label>Farbe <input type="color" id="s-color-b"></label>
-          <label>Taste <button type="button" class="keybind" id="s-key-b" data-player="b"></button></label>
+          <label>Taste <button type="button" class="keybind" id="s-key-b"></button></label>
         </fieldset>
       </div>
 
       <fieldset>
         <legend>Ablauf</legend>
         <label>Sperrzeit (Sekunden) <input type="number" id="s-seconds" min="1" max="30" step="1"></label>
+        <label>Punkte zum Sieg <input type="number" id="s-target" min="1" max="20" step="1"></label>
         <label class="check"><input type="checkbox" id="s-tick"> Tick-Sound jede Sekunde</label>
         <label>Lautstärke <input type="range" id="s-volume" min="0" max="1" step="0.05"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Spielstand</legend>
+        <div class="score-line" id="s-score"></div>
+        <button type="button" id="new-game">Spielstand zurücksetzen</button>
+        <p class="note">Nach einem Buzz: <kbd>1</kbd> richtig (Punkt), <kbd>0</kbd> falsch, <kbd>Backspace</kbd> letzte Bewertung rückgängig.</p>
       </fieldset>
 
       <fieldset>

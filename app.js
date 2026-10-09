@@ -7,12 +7,17 @@ const DEFAULTS = {
   a: { name: 'Daniel', color: '#e53935', key: 'a' },
   b: { name: 'Dennis', color: '#1e88e5', key: '#' },
   seconds: 5,
+  target: 5,
   tick: true,
   volume: 0.8,
 };
+const NAME_SUGGESTIONS = ['Daniel', 'Dennis', 'Monika', 'Volker'];
+const RESERVED_KEYS = ['Escape', 'Enter', 'Backspace', 'Tab', ' ', '0', '1'];
 const STORAGE_KEY = 'buzzer.settings.v1';
+const SCORE_KEY = 'buzzer.score.v1';
 
 let settings = loadSettings();
+let score = loadScore();
 
 function loadSettings() {
   const base = structuredClone(DEFAULTS);
@@ -34,6 +39,22 @@ function saveSettings() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
 }
 
+function freshScore() {
+  return { a: 0, b: 0, revealed: false, history: [] };
+}
+
+function loadScore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SCORE_KEY));
+    if (s && typeof s.a === 'number') return { ...freshScore(), ...s };
+  } catch { /* ignore */ }
+  return freshScore();
+}
+
+function saveScore() {
+  try { localStorage.setItem(SCORE_KEY, JSON.stringify(score)); } catch { /* ignore */ }
+}
+
 /* =========================================================
    Audio
    ========================================================= */
@@ -42,6 +63,9 @@ const SOUNDS = [
   { id: 'buzzB', title: 'Buzzer B' },
   { id: 'tick', title: 'Sekunden-Tick' },
   { id: 'timeup', title: 'Zeit abgelaufen' },
+  { id: 'correct', title: 'Richtig' },
+  { id: 'wrong', title: 'Falsch' },
+  { id: 'win', title: 'Sieg' },
 ];
 
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -99,6 +123,20 @@ const SYNTH = {
     tone({ type: 'square', freq: 150, dur: 1.1, gain: 0.22, filter: 1100 });
     tone({ type: 'square', freq: 155, dur: 1.1, gain: 0.22, filter: 1100 });
     tone({ type: 'sawtooth', freq: 75, dur: 1.1, gain: 0.15, filter: 600 });
+  },
+  correct() {
+    [880, 1109, 1319].forEach((f, i) =>
+      tone({ type: 'triangle', freq: f, start: i * 0.09, dur: 0.25, gain: 0.3 }));
+  },
+  wrong() {
+    tone({ type: 'square', freq: 311, start: 0, dur: 0.22, gain: 0.18, filter: 1400 });
+    tone({ type: 'square', freq: 233, start: 0.22, dur: 0.45, gain: 0.18, filter: 1400 });
+  },
+  win() {
+    [523, 659, 784].forEach((f, i) =>
+      tone({ type: 'triangle', freq: f, start: i * 0.14, dur: 0.18, gain: 0.3 }));
+    [523, 659, 784, 1047].forEach(f =>
+      tone({ type: 'triangle', freq: f, start: 0.45, dur: 1.2, gain: 0.18 }));
   },
 };
 
@@ -176,7 +214,8 @@ const overlay = $('overlay');
 const dotsEl = $('dots');
 const dialog = $('settings');
 
-let state = 'idle'; // idle | locked
+let state = 'idle';    // idle | locked | won
+let pending = null;    // player whose buzz still awaits a verdict (0/1)
 let timers = [];
 
 function keyLabel(k) {
@@ -194,6 +233,24 @@ function applyUi() {
     $('key-' + p).textContent = keyLabel(settings[p].key);
   }
   applyVolume();
+  renderScore();
+}
+
+function renderScore(newFor) {
+  document.body.classList.toggle('score-on', score.revealed);
+  const total = Math.max(settings.target, score.a, score.b);
+  for (const p of ['a', 'b']) {
+    const el = $('score-' + p);
+    el.innerHTML = '';
+    for (let i = 0; i < total; i++) {
+      const d = document.createElement('span');
+      d.className = 'pt' + (i < score[p] ? ' on' : '');
+      if (p === newFor && i === score[p] - 1) d.classList.add('new');
+      el.appendChild(d);
+    }
+  }
+  const line = $('s-score');
+  if (line) line.textContent = `${settings.a.name} ${score.a} : ${score.b} ${settings.b.name}`;
 }
 
 function clearTimers() {
@@ -205,10 +262,10 @@ function buzz(player) {
   if (state !== 'idle' || dialog.open) return;
   unlockAudio();
   state = 'locked';
+  pending = player;
   const p = settings[player];
 
   playSound(player === 'a' ? 'buzzA' : 'buzzB');
-  $('side-' + player).classList.add('pressed');
 
   overlay.style.setProperty('--win', p.color);
   overlay.style.setProperty('--ox', player === 'a' ? '25%' : '75%');
@@ -230,8 +287,7 @@ function buzz(player) {
   const dots = [...dotsEl.children];
   for (let i = 1; i <= n; i++) {
     timers.push(setTimeout(() => {
-      const d = dots[n - i];
-      d.classList.add('off', 'fading');
+      dots[n - i].classList.add('off', 'fading');
       if (i < n) {
         if (settings.tick) playSound('tick');
       } else {
@@ -244,13 +300,74 @@ function buzz(player) {
 
 function release() {
   clearTimers();
-  document.querySelectorAll('.side.pressed').forEach(el => el.classList.remove('pressed'));
   if (overlay.classList.contains('show')) {
     overlay.classList.remove('show');
     overlay.classList.add('hide');
     timers.push(setTimeout(() => overlay.classList.remove('hide'), 400));
   }
+  if (state === 'locked') state = 'idle';
+}
+
+function showVerdict(correct) {
+  const v = $('verdict');
+  v.className = correct ? 'ok' : 'no';
+  v.textContent = correct ? '✓' : '✗';
+  void v.offsetWidth;
+  v.classList.add('show');
+}
+
+function judge(correct) {
+  if (!pending || state === 'won') return;
+  const p = pending;
+  pending = null;
+  release();
+
+  score.revealed = true;
+  score.history.push({ p, correct });
+  if (correct) score[p]++;
+  saveScore();
+  renderScore(correct ? p : null);
+  showVerdict(correct);
+  playSound(correct ? 'correct' : 'wrong');
+
+  if (correct && score[p] >= settings.target) {
+    timers.push(setTimeout(() => showWin(p), 900));
+  }
+}
+
+function undo() {
+  const last = score.history.pop();
+  if (!last) return;
+  if (last.correct) score[last.p]--;
+  if (state === 'won') hideWin();
+  release();
+  pending = last.p; // allow re-judging that buzz
+  saveScore();
+  renderScore();
+}
+
+function showWin(p) {
+  state = 'won';
+  const w = $('win');
+  w.style.setProperty('--win', settings[p].color);
+  $('win-name').textContent = settings[p].name;
+  w.classList.add('show');
+  playSound('win');
+}
+
+function hideWin() {
+  $('win').classList.remove('show');
   state = 'idle';
+}
+
+function newGame() {
+  clearTimers();
+  release();
+  hideWin();
+  pending = null;
+  score = freshScore();
+  saveScore();
+  renderScore();
 }
 
 /* ---------- Input ---------- */
@@ -262,7 +379,7 @@ document.addEventListener('keydown', e => {
     e.stopPropagation();
     if (e.key === 'Escape') { stopListening(); return; }
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (k === ' ') return; // reserved for reset
+    if (RESERVED_KEYS.includes(k)) return;
     const other = listeningFor === 'a' ? 'b' : 'a';
     if (settings[other].key === k) return;
     settings[listeningFor].key = k;
@@ -276,25 +393,39 @@ document.addEventListener('keydown', e => {
   unlockAudio();
   if (e.repeat) return;
 
-  if (e.key === 'Escape') { e.preventDefault(); openSettings(); return; }
-  if (e.key === ' ') { e.preventDefault(); release(); return; }
-
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  switch (k) {
+    case 'Escape': e.preventDefault(); openSettings(); return;
+    case '1': e.preventDefault(); judge(true); return;
+    case '0': e.preventDefault(); judge(false); return;
+    case 'Backspace': e.preventDefault(); undo(); return;
+    case 'Enter': if (state === 'won') { e.preventDefault(); newGame(); } return;
+  }
   if (k === settings.a.key) { e.preventDefault(); buzz('a'); }
   else if (k === settings.b.key) { e.preventDefault(); buzz('b'); }
 }, true);
 
-for (const p of ['a', 'b']) {
-  $('side-' + p).addEventListener('pointerdown', () => buzz(p));
-}
 document.addEventListener('pointerdown', unlockAudio);
+
+/* ---------- Hide mouse cursor when idle ---------- */
+let cursorTimer = null;
+function hideCursorSoon() {
+  document.body.classList.remove('no-cursor');
+  clearTimeout(cursorTimer);
+  cursorTimer = setTimeout(() => {
+    if (!dialog.open) document.body.classList.add('no-cursor');
+  }, 1500);
+}
+document.addEventListener('mousemove', hideCursorSoon);
+hideCursorSoon();
 
 /* =========================================================
    Settings dialog
    ========================================================= */
 function openSettings() {
-  release();
+  if (state === 'locked') release();
   fillForm();
+  document.body.classList.remove('no-cursor');
   dialog.showModal();
 }
 
@@ -305,9 +436,34 @@ function fillForm() {
     $('s-key-' + p).textContent = keyLabel(settings[p].key);
   }
   $('s-seconds').value = settings.seconds;
+  $('s-target').value = settings.target;
   $('s-tick').checked = settings.tick;
   $('s-volume').value = settings.volume;
+  renderChips();
+  renderScore();
   renderSoundList();
+}
+
+function setName(p, name) {
+  settings[p].name = name.trim() || DEFAULTS[p].name;
+  saveSettings();
+  applyUi();
+  renderChips();
+}
+
+function renderChips() {
+  document.querySelectorAll('.chips').forEach(box => {
+    const p = box.dataset.player;
+    box.innerHTML = '';
+    for (const n of NAME_SUGGESTIONS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = n;
+      if (settings[p].name === n) b.classList.add('active');
+      b.addEventListener('click', () => { $('s-name-' + p).value = n; setName(p, n); });
+      box.appendChild(b);
+    }
+  });
 }
 
 function stopListening() {
@@ -318,17 +474,13 @@ function stopListening() {
   listeningFor = null;
 }
 
-$('settings-btn').addEventListener('click', e => { e.stopPropagation(); openSettings(); });
-$('settings-btn').addEventListener('pointerdown', e => e.stopPropagation());
+$('settings-btn').addEventListener('click', openSettings);
 
 dialog.addEventListener('cancel', e => { if (listeningFor) e.preventDefault(); });
-dialog.addEventListener('close', stopListening);
+dialog.addEventListener('close', () => { stopListening(); hideCursorSoon(); });
 
 for (const p of ['a', 'b']) {
-  $('s-name-' + p).addEventListener('input', e => {
-    settings[p].name = e.target.value.trim() || DEFAULTS[p].name;
-    saveSettings(); applyUi();
-  });
+  $('s-name-' + p).addEventListener('input', e => setName(p, e.target.value));
   $('s-color-' + p).addEventListener('input', e => {
     settings[p].color = e.target.value;
     saveSettings(); applyUi();
@@ -341,14 +493,20 @@ for (const p of ['a', 'b']) {
   });
 }
 
-$('s-seconds').addEventListener('change', e => {
-  const v = Math.max(1, Math.min(30, parseInt(e.target.value, 10) || DEFAULTS.seconds));
-  e.target.value = v;
-  settings.seconds = v;
-  saveSettings();
-});
+function bindNumber(id, prop, min, max) {
+  $(id).addEventListener('change', e => {
+    const v = Math.max(min, Math.min(max, parseInt(e.target.value, 10) || DEFAULTS[prop]));
+    e.target.value = v;
+    settings[prop] = v;
+    saveSettings();
+    renderScore();
+  });
+}
+bindNumber('s-seconds', 'seconds', 1, 30);
+bindNumber('s-target', 'target', 1, 20);
 $('s-tick').addEventListener('change', e => { settings.tick = e.target.checked; saveSettings(); });
 $('s-volume').addEventListener('input', e => { settings.volume = +e.target.value; saveSettings(); applyVolume(); });
+$('new-game').addEventListener('click', newGame);
 
 function renderSoundList() {
   const list = $('sound-list');
