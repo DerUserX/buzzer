@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buzzer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="arena">
+    <section class="side" id="side-a" data-player="a">
+      <div class="side-inner">
+        <div class="name" id="name-a">Daniel</div>
+        <div class="key-hint">Taste <kbd id="key-a">A</kbd></div>
+      </div>
+    </section>
+    <section class="side" id="side-b" data-player="b">
+      <div class="side-inner">
+        <div class="name" id="name-b">Dennis</div>
+        <div class="key-hint">Taste <kbd id="key-b">#</kbd></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="overlay" aria-live="assertive">
+    <div class="overlay-content">
+      <div class="overlay-name" id="overlay-name"></div>
+      <div class="dots" id="dots"></div>
+      <div class="overlay-hint">Leertaste = sofort zurücksetzen</div>
+    </div>
+  </div>
+
+  <button id="settings-btn" title="Einstellungen (Esc)" aria-label="Einstellungen">⚙</button>
+  <div id="start-hint">Klick oder Taste drücken, um Sound zu aktivieren · Esc = Einstellungen</div>
+
+  <dialog id="settings">
+    <form method="dialog" id="settings-form">
+      <header>
+        <h2>Einstellungen</h2>
+        <button type="submit" class="close" aria-label="Schließen">✕</button>
+      </header>
+
+      <div class="grid-players">
+        <fieldset class="player">
+          <legend>Spieler A (links)</legend>
+          <label>Name <input type="text" id="s-name-a" maxlength="30"></label>
+          <label>Farbe <input type="color" id="s-color-a"></label>
+          <label>Taste <button type="button" class="keybind" id="s-key-a" data-player="a"></button></label>
+        </fieldset>
+        <fieldset class="player">
+          <legend>Spieler B (rechts)</legend>
+          <label>Name <input type="text" id="s-name-b" maxlength="30"></label>
+          <label>Farbe <input type="color" id="s-color-b"></label>
+          <label>Taste <button type="button" class="keybind" id="s-key-b" data-player="b"></button></label>
+        </fieldset>
+      </div>
+
+      <fieldset>
+        <legend>Ablauf</legend>
+        <label>Sperrzeit (Sekunden) <input type="number" id="s-seconds" min="1" max="30" step="1"></label>
+        <label class="check"><input type="checkbox" id="s-tick"> Tick-Sound jede Sekunde</label>
+        <label>Lautstärke <input type="range" id="s-volume" min="0" max="1" step="0.05"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Sounds</legend>
+        <div id="sound-list"></div>
+        <p class="note">Eigene Dateien (mp3, wav, ogg) werden nur in diesem Browser gespeichert.</p>
+      </fieldset>
+
+      <footer>
+        <button type="button" id="reset-all" class="danger">Alles auf Standard</button>
+        <button type="submit" class="primary">Fertig</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
