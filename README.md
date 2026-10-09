@@ -27,7 +27,7 @@ Mit `1`/`0` wird die Antwort bewertet (auch nach Ablauf der Zeit); das beendet d
 - Name (mit Vorschlägen Daniel, Dennis, Monika, Volker), Farbe und Taste pro Spieler
 - Sperrzeit (1–30 s), Punkte zum Sieg (1–20), Tick-Sound an/aus, Lautstärke
 - Spielstand zurücksetzen
-- Eigene Sounds (mp3/wav/ogg) für Buzzer A, Buzzer B, Sekunden-Tick, Zeit abgelaufen, Richtig, Falsch und Sieg
+- Eigene Sounds (mp3/wav/ogg) für Buzzer A, Buzzer B, Sekunden-Tick und Zeit abgelaufen
 
 Alles wird lokal im Browser gespeichert (localStorage bzw. IndexedDB für Sounds).
 
