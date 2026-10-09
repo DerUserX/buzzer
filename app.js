@@ -63,9 +63,6 @@ const SOUNDS = [
   { id: 'buzzB', title: 'Buzzer B' },
   { id: 'tick', title: 'Sekunden-Tick' },
   { id: 'timeup', title: 'Zeit abgelaufen' },
-  { id: 'correct', title: 'Richtig' },
-  { id: 'wrong', title: 'Falsch' },
-  { id: 'win', title: 'Sieg' },
 ];
 
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -123,20 +120,6 @@ const SYNTH = {
     tone({ type: 'square', freq: 150, dur: 1.1, gain: 0.22, filter: 1100 });
     tone({ type: 'square', freq: 155, dur: 1.1, gain: 0.22, filter: 1100 });
     tone({ type: 'sawtooth', freq: 75, dur: 1.1, gain: 0.15, filter: 600 });
-  },
-  correct() {
-    [880, 1109, 1319].forEach((f, i) =>
-      tone({ type: 'triangle', freq: f, start: i * 0.09, dur: 0.25, gain: 0.3 }));
-  },
-  wrong() {
-    tone({ type: 'square', freq: 311, start: 0, dur: 0.22, gain: 0.18, filter: 1400 });
-    tone({ type: 'square', freq: 233, start: 0.22, dur: 0.45, gain: 0.18, filter: 1400 });
-  },
-  win() {
-    [523, 659, 784].forEach((f, i) =>
-      tone({ type: 'triangle', freq: f, start: i * 0.14, dur: 0.18, gain: 0.3 }));
-    [523, 659, 784, 1047].forEach(f =>
-      tone({ type: 'triangle', freq: f, start: 0.45, dur: 1.2, gain: 0.18 }));
   },
 };
 
@@ -308,14 +291,6 @@ function release() {
   if (state === 'locked') state = 'idle';
 }
 
-function showVerdict(correct) {
-  const v = $('verdict');
-  v.className = correct ? 'ok' : 'no';
-  v.textContent = correct ? '✓' : '✗';
-  void v.offsetWidth;
-  v.classList.add('show');
-}
-
 function judge(correct) {
   if (!pending || state === 'won') return;
   const p = pending;
@@ -327,8 +302,6 @@ function judge(correct) {
   if (correct) score[p]++;
   saveScore();
   renderScore(correct ? p : null);
-  showVerdict(correct);
-  playSound(correct ? 'correct' : 'wrong');
 
   if (correct && score[p] >= settings.target) {
     timers.push(setTimeout(() => showWin(p), 900));
@@ -352,7 +325,6 @@ function showWin(p) {
   w.style.setProperty('--win', settings[p].color);
   $('win-name').textContent = settings[p].name;
   w.classList.add('show');
-  playSound('win');
 }
 
 function hideWin() {
