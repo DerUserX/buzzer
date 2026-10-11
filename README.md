@@ -11,7 +11,7 @@ Quiz-Buzzer für zwei Spieler an einer Tastatur – läuft komplett im Browser, 
 | `A` | Buzzer links (Standard: Daniel, Rot) |
 | `#` | Buzzer rechts (Standard: Dennis, Blau) |
 | `1` | Antwort richtig → Punkt für den, der gebuzzert hat |
-| `0` | Antwort falsch → kein Punkt |
+| `0` | Antwort falsch → Punkt für den Gegner (abschaltbar) |
 | `Backspace` | Letzte Bewertung rückgängig |
 | `Enter` | Nach einem Sieg: neues Spiel |
 | `Esc` / ⚙ | Einstellungen |
@@ -25,7 +25,7 @@ Mit `1`/`0` wird die Antwort bewertet (auch nach Ablauf der Zeit); das beendet d
 ## Einstellungen
 
 - Name (mit Vorschlägen Daniel, Dennis, Monika, Volker), Farbe und Taste pro Spieler
-- Sperrzeit (1–30 s), Punkte zum Sieg (1–20), Tick-Sound an/aus, Lautstärke
+- Sperrzeit (1–30 s), Punkte zum Sieg (1–20), falsche Antwort gibt Gegner einen Punkt (an/aus), Tick-Sound an/aus, Lautstärke
 - Spielstand zurücksetzen
 - Eigene Sounds (mp3/wav/ogg) für Buzzer A, Buzzer B, Sekunden-Tick und Zeit abgelaufen
 

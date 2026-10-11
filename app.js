@@ -9,6 +9,7 @@ const DEFAULTS = {
   seconds: 5,
   target: 5,
   tick: true,
+  wrongToOpponent: true,
   volume: 0.8,
 };
 const NAME_SUGGESTIONS = ['Daniel', 'Dennis', 'Monika', 'Volker'];
@@ -298,20 +299,23 @@ function judge(correct) {
   release();
 
   score.revealed = true;
-  score.history.push({ p, correct });
-  if (correct) score[p]++;
+  // who gets the point: the buzzer if right, optionally the opponent if wrong
+  const to = correct ? p : (settings.wrongToOpponent ? (p === 'a' ? 'b' : 'a') : null);
+  score.history.push({ p, correct, to });
+  if (to) score[to]++;
   saveScore();
-  renderScore(correct ? p : null);
+  renderScore(to);
 
-  if (correct && score[p] >= settings.target) {
-    timers.push(setTimeout(() => showWin(p), 900));
+  if (to && score[to] >= settings.target) {
+    timers.push(setTimeout(() => showWin(to), 900));
   }
 }
 
 function undo() {
   const last = score.history.pop();
   if (!last) return;
-  if (last.correct) score[last.p]--;
+  const to = 'to' in last ? last.to : (last.correct ? last.p : null);
+  if (to) score[to]--;
   if (state === 'won') hideWin();
   release();
   pending = last.p; // allow re-judging that buzz
@@ -410,6 +414,7 @@ function fillForm() {
   $('s-seconds').value = settings.seconds;
   $('s-target').value = settings.target;
   $('s-tick').checked = settings.tick;
+  $('s-wrong').checked = settings.wrongToOpponent;
   $('s-volume').value = settings.volume;
   renderChips();
   renderScore();
@@ -477,6 +482,7 @@ function bindNumber(id, prop, min, max) {
 bindNumber('s-seconds', 'seconds', 1, 30);
 bindNumber('s-target', 'target', 1, 20);
 $('s-tick').addEventListener('change', e => { settings.tick = e.target.checked; saveSettings(); });
+$('s-wrong').addEventListener('change', e => { settings.wrongToOpponent = e.target.checked; saveSettings(); });
 $('s-volume').addEventListener('input', e => { settings.volume = +e.target.value; saveSettings(); applyVolume(); });
 $('new-game').addEventListener('click', newGame);
 
