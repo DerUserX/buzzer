@@ -2,7 +2,7 @@
 
 Quiz-Buzzer für zwei Spieler an einer Tastatur – läuft komplett im Browser, ohne Installation.
 
-**Online spielen:** https://deruserx.github.io/buzzer/
+**Online spielen:** https://demuhb.github.io/buzzer/
 
 ## Bedienung
 
